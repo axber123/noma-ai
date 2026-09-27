@@ -1,0 +1,356 @@
+/* =========================================================
+   N.O.M.A. CORE SYSTEM
+   Futuristic AI / Cassell College
+   ========================================================= */
+
+.bg-layer {
+  position: fixed;
+  inset: 0;
+
+  z-index: 0;
+
+  overflow: hidden;
+
+  pointer-events: none;
+
+  background: radial-gradient(
+    ellipse at 50% 44%,
+    #071d3d 0%,
+    #030b1d 35%,
+    #010510 72%,
+    #000208 100%
+  );
+}
+
+/* =========================================================
+   CANVAS
+   ========================================================= */
+
+.bg-canvas {
+  position: absolute;
+
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  opacity: 0.95;
+}
+
+/* =========================================================
+   顶部巨大蓝色空间光
+   ========================================================= */
+
+.bg-top-glow {
+  position: absolute;
+
+  left: 50%;
+  top: -35%;
+
+  width: 85vw;
+  height: 75vh;
+
+  transform: translateX(-50%);
+
+  border-radius: 50%;
+
+  background: radial-gradient(
+    ellipse,
+    rgba(40, 145, 235, 0.18),
+    rgba(20, 80, 160, 0.06) 40%,
+    transparent 72%
+  );
+
+  filter: blur(50px);
+
+  animation: topGlow 8s ease-in-out infinite;
+}
+
+/* =========================================================
+   两侧能量光
+   ========================================================= */
+
+.bg-side-glow {
+  position: absolute;
+
+  width: 30vw;
+  height: 70vh;
+
+  border-radius: 50%;
+
+  filter: blur(80px);
+
+  opacity: 0.35;
+}
+
+.bg-side-glow-left {
+  left: -20vw;
+  top: 10%;
+
+  background: radial-gradient(
+    ellipse,
+    rgba(20, 130, 230, 0.35),
+    transparent 70%
+  );
+
+  animation: sideGlowLeft 14s ease-in-out infinite;
+}
+
+.bg-side-glow-right {
+  right: -20vw;
+  top: 20%;
+
+  background: radial-gradient(
+    ellipse,
+    rgba(30, 110, 220, 0.3),
+    transparent 70%
+  );
+
+  animation: sideGlowRight 17s ease-in-out infinite;
+}
+
+/* =========================================================
+   巨型全息环
+   ========================================================= */
+
+.bg-mega-ring {
+  position: absolute;
+
+  width: 42vw;
+  height: 42vw;
+
+  border-radius: 50%;
+
+  opacity: 0.16;
+
+  border: 1px solid rgba(80, 200, 255, 0.4);
+
+  box-shadow:
+    inset 0 0 80px rgba(40, 160, 255, 0.04),
+    0 0 80px rgba(30, 140, 255, 0.05);
+
+  animation: megaRing 40s linear infinite;
+}
+
+.bg-mega-ring::before,
+.bg-mega-ring::after {
+  content: "";
+
+  position: absolute;
+
+  left: 50%;
+  top: 50%;
+
+  border-radius: 50%;
+
+  transform: translate(-50%, -50%);
+
+  border: 1px dashed rgba(90, 215, 255, 0.2);
+}
+
+.bg-mega-ring::before {
+  width: 82%;
+  height: 82%;
+}
+
+.bg-mega-ring::after {
+  width: 57%;
+  height: 57%;
+
+  border-style: solid;
+
+  opacity: 0.5;
+}
+
+.bg-mega-ring-left {
+  left: -25vw;
+  top: 4vh;
+}
+
+.bg-mega-ring-right {
+  right: -25vw;
+  bottom: -8vh;
+
+  animation-direction: reverse;
+}
+
+/* =========================================================
+   中央光束
+   ========================================================= */
+
+.bg-center-beam {
+  position: absolute;
+
+  left: 50%;
+  top: 8%;
+
+  width: 1px;
+  height: 70%;
+
+  transform: translateX(-50%);
+
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(80, 210, 255, 0.04),
+    rgba(120, 230, 255, 0.18),
+    rgba(80, 210, 255, 0.03),
+    transparent
+  );
+
+  filter: blur(1px);
+
+  opacity: 0.5;
+
+  animation: beamPulse 5s ease-in-out infinite;
+}
+
+/* =========================================================
+   顶部 HUD 线
+   ========================================================= */
+
+.bg-hud-line {
+  position: absolute;
+
+  top: 8%;
+
+  width: 18vw;
+  height: 1px;
+
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(80, 205, 255, 0.4),
+    transparent
+  );
+
+  opacity: 0.35;
+}
+
+.bg-hud-line-left {
+  left: 4%;
+}
+
+.bg-hud-line-right {
+  right: 4%;
+}
+
+/* =========================================================
+   暗角
+   ========================================================= */
+
+.bg-vignette {
+  position: absolute;
+
+  inset: 0;
+
+  background: radial-gradient(
+    ellipse at center,
+    transparent 30%,
+    rgba(0, 3, 12, 0.12) 58%,
+    rgba(0, 2, 8, 0.65) 100%
+  );
+}
+
+/* =========================================================
+   动画
+   ========================================================= */
+
+@keyframes topGlow {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: translateX(-50%) scale(0.95);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.05);
+  }
+}
+
+@keyframes sideGlowLeft {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+
+  50% {
+    transform: translate(5vw, 4vh);
+  }
+}
+
+@keyframes sideGlowRight {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+
+  50% {
+    transform: translate(-5vw, -3vh);
+  }
+}
+
+@keyframes megaRing {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes beamPulse {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* =========================================================
+   手机端
+   ========================================================= */
+
+@media (max-width: 768px) {
+  .bg-canvas {
+    opacity: 0.75;
+  }
+
+  .bg-mega-ring {
+    width: 70vw;
+    height: 70vw;
+  }
+
+  .bg-mega-ring-left {
+    left: -40vw;
+  }
+
+  .bg-mega-ring-right {
+    right: -40vw;
+  }
+
+  .bg-top-glow {
+    width: 120vw;
+  }
+
+  .bg-side-glow {
+    opacity: 0.2;
+  }
+}
+
+/* =========================================================
+   降低动画
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-layer * {
+    animation: none !important;
+  }
+}

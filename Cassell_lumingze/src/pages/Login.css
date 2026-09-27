@@ -1,0 +1,357 @@
+/* ============ 登录页：卡塞尔学院 · 黑红龙族主题 ============ */
+.login-page {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #050505;
+  font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", sans-serif;
+  color: #f5f1e8;
+}
+
+/* 背景视频铺满整个屏幕 */
+.bg-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+/* 黑红暗色遮罩：中心提亮、四周压暗，突出文字，营造神秘感 */
+.bg-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(
+      ellipse at center,
+      rgba(20, 0, 0, 0.28) 0%,
+      rgba(0, 0, 0, 0.74) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.5) 0%,
+      rgba(0, 0, 0, 0.12) 40%,
+      rgba(0, 0, 0, 0.78) 100%
+    );
+}
+
+/* 中部内容 */
+.login-content {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 26px;
+  padding: 0 24px;
+}
+
+.login-kicker {
+  letter-spacing: 0.5em;
+  text-indent: 0.5em;
+  font-size: 13px;
+  color: #c0392b;
+  border-top: 1px solid rgba(192, 57, 43, 0.5);
+  border-bottom: 1px solid rgba(192, 57, 43, 0.5);
+  padding: 8px 18px;
+  text-transform: uppercase;
+}
+
+.login-title {
+  margin: 0;
+  font-size: clamp(42px, 8vw, 92px);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  color: #f5f1e8;
+  text-shadow:
+    0 0 34px rgba(192, 57, 43, 0.45),
+    0 6px 24px rgba(0, 0, 0, 0.85);
+}
+
+.login-title span {
+  display: block;
+  margin-top: 8px;
+  background: linear-gradient(180deg, #ffd27a 0%, #e23b2e 55%, #7a0c06 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 22px rgba(226, 59, 46, 0.55));
+}
+
+.login-subtitle {
+  color: rgba(245, 241, 232, 0.72);
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+  font-size: 14px;
+}
+
+/* 透明矩形按钮 */
+.login-actions {
+  display: flex;
+  gap: 40px;
+  margin-top: 30px;
+}
+
+.btn-ghost {
+  background: rgba(20, 0, 0, 0.16);
+  border: 1px solid rgba(226, 59, 46, 0.85);
+  color: #f5f1e8;
+  font-size: 16px;
+  letter-spacing: 0.5em;
+  text-indent: 0.5em;
+  padding: 14px 46px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.btn-ghost:hover {
+  background: rgba(226, 59, 46, 0.9);
+  color: #fff;
+  box-shadow: 0 0 26px rgba(226, 59, 46, 0.7);
+  transform: translateY(-2px);
+}
+
+/* ============ 弹窗 ============ */
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.modal-box {
+  position: relative;
+  width: 380px;
+  max-width: 92vw;
+  padding: 40px 36px 32px;
+  background: linear-gradient(
+    160deg,
+    rgba(28, 8, 8, 0.96) 0%,
+    rgba(10, 3, 3, 0.98) 100%
+  );
+  border: 1px solid rgba(226, 59, 46, 0.6);
+  box-shadow:
+    0 0 44px rgba(226, 59, 46, 0.25),
+    0 22px 60px rgba(0, 0, 0, 0.85);
+  color: #f5f1e8;
+}
+
+/* 顶部红色鎏金装饰条 */
+.modal-box::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #e23b2e,
+    #ffd27a,
+    #e23b2e,
+    transparent
+  );
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: rgba(245, 241, 232, 0.7);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.modal-close:hover {
+  color: #e23b2e;
+}
+
+.modal-title {
+  margin: 0 0 26px;
+  text-align: center;
+  font-size: 24px;
+  letter-spacing: 0.35em;
+  text-indent: 0.35em;
+  color: #ffd27a;
+}
+
+.modal-box form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modal-box label {
+  font-size: 12px;
+  color: rgba(245, 241, 232, 0.6);
+  letter-spacing: 0.2em;
+  margin-top: 6px;
+}
+
+.modal-box input {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(245, 241, 232, 0.18);
+  color: #f5f1e8;
+  padding: 12px 14px;
+  font-size: 14px;
+  outline: none;
+  transition:
+    border-color 0.3s,
+    box-shadow 0.3s;
+}
+
+.modal-box input:focus {
+  border-color: #e23b2e;
+  box-shadow: 0 0 0 2px rgba(226, 59, 46, 0.22);
+}
+
+.modal-box input::placeholder {
+  color: rgba(245, 241, 232, 0.3);
+}
+
+.btn-solid {
+  margin-top: 18px;
+  background: linear-gradient(90deg, #c0392b, #e23b2e);
+  border: none;
+  color: #fff;
+  font-size: 15px;
+  letter-spacing: 0.4em;
+  text-indent: 0.4em;
+  padding: 13px 0;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-solid:hover:not(:disabled) {
+  box-shadow: 0 0 28px rgba(226, 59, 46, 0.8);
+}
+
+.btn-solid:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 表单错误提示 */
+.form-error {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #ff8a80;
+  background: rgba(226, 59, 46, 0.14);
+  border-left: 3px solid #e23b2e;
+  letter-spacing: 0.04em;
+}
+
+/* ============ 登录成功：录取通知书弹窗（背景图为 public/lqtzs.png） ============ */
+.admission-modal {
+  position: relative;
+  width: min(92vw, 500px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.admission-modal .modal-close {
+  top: 8px;
+  right: 12px;
+  z-index: 2;
+  color: rgba(74, 44, 18, 0.75);
+  font-size: 24px;
+}
+
+.admission-modal .modal-close:hover {
+  color: #a3281c;
+}
+
+/* 录取通知书卡片：使用 public 目录下的背景图，保持原图比例 */
+.admission-paper {
+  position: relative;
+  /* 宽度按视口高度约束（比例 1145/1373 ≈ 0.834），保证底部按钮始终可见 */
+  width: min(100%, calc((94vh - 72px) * 0.834));
+  aspect-ratio: 1145 / 1373;
+  background-image: url("/lqtzs.png");
+  background-size: 100% 100%;
+  background-position: center;
+  border: 2px solid #b08a35;
+  box-shadow:
+    0 0 0 4px rgba(249, 243, 227, 0.9),
+    0 0 0 6px #8a6a2f,
+    0 24px 60px rgba(0, 0, 0, 0.85);
+  border-radius: 2px;
+}
+
+/* 最上方左边：亲爱的 XX 同学 */
+.admission-greet {
+  position: absolute;
+  top: 37.6%;
+  left: 6.5%;
+  margin: 0;
+  font-family: "STKaiti", "KaiTi", "楷体", serif;
+  font-size: clamp(12px, 4.2vw, 16px);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #5a2d16;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.75);
+  white-space: nowrap;
+}
+
+/* 正文：录取致辞，叠放在通知书中上部 */
+.admission-body {
+  position: absolute;
+  top: 42%;
+  left: 7%;
+  right: 6%;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 10px;
+  font-family: "STKaiti", "KaiTi", "楷体", serif;
+  font-size: clamp(11.5px, 2.9vw, 13px);
+  line-height: 1.8;
+  letter-spacing: 0.04em;
+  color: #4a2c12;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.7);
+}
+
+.admission-body p {
+  margin: 0;
+}
+
+.btn-enter {
+  width: 100%;
+  max-width: 260px;
+  padding: 12px 0;
+  font-size: 15px;
+  letter-spacing: 0.4em;
+  text-indent: 0.4em;
+  color: #f7eede;
+  background: linear-gradient(120deg, #7e1c12, #a3281c 45%, #c23a2a);
+  border: 1px solid #b08a35;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 14px rgba(120, 30, 20, 0.45);
+}
+
+.btn-enter:hover {
+  box-shadow: 0 0 22px rgba(176, 138, 53, 0.8);
+  transform: translateY(-1px);
+}
