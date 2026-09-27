@@ -1,133 +1,172 @@
 /**
- * 卡塞尔学院 NOMA AI 对话后端（Node 18+，openai SDK）
+ * 卡塞尔学院 NOMA AI 后端
  *
- * 启动：npm run server  （默认端口 3001）
+ * Node.js + Express + OpenAI SDK
  *
  * 接口：
- *   POST /api/chat  { message: string }  → SSE 流式返回 AI 回答
- *   GET  /api/health                     → { ok: true }
- *
- * AI 配置（项目根 .env，或 server/.env 或环境变量）：
- *   OPENAI_API_KEY   API Key（不配置时使用本地模拟回答，便于直接演示）
- *   OPENAI_BASE_URL  兼容 OpenAI 的接口地址，默认 https://api.openai.com/v1
- *   OPENAI_MODEL     模型名，默认 deepseek-v41-flash
- *   （兼容旧键名 AI_API_KEY / AI_BASE_URL / AI_MODEL）
- *
- * 调用方式：openai SDK 的 client.chat.completions.create({ stream: true })，
- * 逐块提取 delta.content，以 SSE 透传给前端。
- * API Key 只保存在服务端，前端不接触。
+ * POST /api/chat
+ * GET  /api/health
  */
-import { createServer } from "node:http";
-import { readFile, stat } from "node:fs/promises";
-import { existsSync, readFileSync } from "node:fs";
-import { extname, join, normalize } from "node:path";
-import { fileURLToPath } from "node:url";
-import { dirname } from "node:path";
+
+import express from "express";
+import cors from "cors";
 import OpenAI from "openai";
+import dotenv from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import fs from "node:fs";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+dotenv.config({ quiet: true });
+
+/* =========================
+   基础配置
+========================= */
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+
 const PORT = Number(process.env.PORT || 3001);
-const DIST = join(__dirname, "..", "dist");
 
-// ---- 简易 .env 加载（根目录 .env 优先，server/.env 可覆盖） ----
-function loadEnvFile(envPath) {
-  if (!existsSync(envPath)) return;
-  const content = readFileSync(envPath, "utf8");
-  for (const raw of content.split(/\r?\n/)) {
-    const line = raw.trim();
-    if (!line || line.startsWith("#")) continue;
-    const idx = line.indexOf("=");
-    if (idx <= 0) continue;
-    const key = line.slice(0, idx).trim();
-    const value = line.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
-    if (!(key in process.env)) process.env[key] = value;
-  }
-}
-function loadEnv() {
-  loadEnvFile(join(__dirname, "..", ".env")); // 项目根 .env
-  loadEnvFile(join(__dirname, ".env")); // server/.env（覆盖）
-}
-loadEnv(); // 先加载 .env，再读取 AI 配置
+const DIST = path.join(__dirname, "..", "dist");
 
-// ---- AI 配置（兼容 OPENAI_* 与旧 AI_* 两套键名） ----
+/* =========================
+   AI 配置
+========================= */
+
 const AI_KEY = process.env.OPENAI_API_KEY || process.env.AI_API_KEY;
-const AI_BASE = (process.env.OPENAI_BASE_URL || process.env.AI_BASE_URL || "https://api.openai.com/v1").replace(/\/+$/, "");
-const AI_MODEL = process.env.OPENAI_MODEL || process.env.AI_MODEL || "deepseek-v41-flash";
 
-// OpenAI 兼容客户端（key 缺失时用占位符，仅在校验通过后才会发起真实请求）
-const client = new OpenAI({ apiKey: AI_KEY || "not-configured", baseURL: AI_BASE });
+const AI_BASE = (
+  process.env.OPENAI_BASE_URL ||
+  process.env.AI_BASE_URL ||
+  "https://api.openai.com/v1"
+).replace(/\/+$/, "");
 
-// 静态资源 MIME
-const MIME = {
-  ".html": "text/html; charset=utf-8",
-  ".js": "text/javascript",
-  ".css": "text/css",
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".webp": "image/webp",
-  ".svg": "image/svg+xml",
-  ".ico": "image/x-icon",
-  ".mp4": "video/mp4",
-  ".json": "application/json",
-  ".woff": "font/woff",
-  ".woff2": "font/woff2",
-};
+const AI_MODEL =
+  process.env.OPENAI_MODEL || process.env.AI_MODEL || "deepseek-v41-flash";
 
-// ---- 读取请求体 ----
-function readBody(req) {
-  return new Promise((resolve, reject) => {
-    let data = "";
-    req.on("data", (c) => {
-      data += c;
-      if (data.length > 1_000_000) {
-        reject(new Error("body too large"));
-        req.destroy();
-      }
-    });
-    req.on("end", () => resolve(data));
-    req.on("error", reject);
+/* =========================
+   OpenAI Client
+========================= */
+
+const client = new OpenAI({
+  apiKey: AI_KEY || "not-configured",
+  baseURL: AI_BASE,
+});
+
+/* =========================
+   Middleware
+========================= */
+
+app.use(
+  cors({
+    origin: true,
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type"],
+  }),
+);
+
+app.use(
+  express.json({
+    limit: "1mb",
+  }),
+);
+
+/* =========================
+   Health Check
+========================= */
+
+app.get("/api/health", (req, res) => {
+  res.json({
+    ok: true,
+    service: "noma",
+    time: new Date().toISOString(),
+    ai: {
+      configured: Boolean(AI_KEY),
+      model: AI_MODEL,
+    },
   });
-}
+});
 
-// ---- 本地模拟回答（未配置 API Key 时使用）----
+/* =========================
+   Mock AI
+========================= */
+
 function buildMockAnswer(question) {
   return [
     `关于「${question}」，我的数据库中检索到了相关线索。`,
     "作为卡塞尔学院的诺玛系统，我的职责是为你检索、分析与守护信息。",
     "秘之边陲藏着许多尚未解开的谜题，如果你愿意，我们可以一起深入探索。",
     "以上为初步检索结果，更精确的结论还需要交叉验证与推理。",
-    "—— 诺玛 · NOMA SYSTEM",
+    "——诺玛 · NOMA SYSTEM",
   ].join("\n");
 }
 
-async function streamMock(res, question) {
-  const text = buildMockAnswer(question);
-  res.writeHead(200, {
-    "Content-Type": "text/event-stream; charset=utf-8",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
-  });
-  // 按 6~16 字符分块，模拟流式输出
-  let i = 0;
-  await new Promise((resolve) => {
-    const iv = setInterval(() => {
-      const size = 6 + Math.floor(Math.random() * 11);
-      const chunk = text.slice(i, i + size);
-      i += size;
-      if (chunk) res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
-      if (i >= text.length) {
-        clearInterval(iv);
-        res.write('data: [DONE]\n\n');
-        res.end();
-        resolve();
-      }
-    }, 46);
-  });
+/* =========================
+   SSE 初始化
+========================= */
+
+function initSSE(res) {
+  res.status(200);
+
+  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+
+  res.setHeader("Connection", "keep-alive");
+
+  res.setHeader("X-Accel-Buffering", "no");
+
+  if (typeof res.flushHeaders === "function") {
+    res.flushHeaders();
+  }
 }
 
-// ---- 调用真实 AI API：openai SDK 流式输出，以 SSE 透传 ----
-async function proxyAIStream(res, messages) {
+/* =========================
+   SSE 发送
+========================= */
+
+function sendSSE(res, data) {
+  res.write(`data: ${JSON.stringify(data)}\n\n`);
+}
+
+/* =========================
+   Mock Streaming
+========================= */
+
+async function streamMock(res, question) {
+  initSSE(res);
+
+  const text = buildMockAnswer(question);
+
+  let index = 0;
+
+  while (index < text.length) {
+    const size = 6 + Math.floor(Math.random() * 11);
+
+    const chunk = text.slice(index, index + size);
+
+    index += size;
+
+    if (chunk) {
+      sendSSE(res, {
+        content: chunk,
+      });
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 46));
+  }
+
+  res.write("data: [DONE]\n\n");
+  res.end();
+}
+
+/* =========================
+   AI Streaming
+========================= */
+
+async function streamAI(res, messages) {
   try {
     const stream = await client.chat.completions.create({
       model: AI_MODEL,
@@ -135,120 +174,174 @@ async function proxyAIStream(res, messages) {
       messages,
     });
 
-    res.writeHead(200, {
-      "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    });
+    initSSE(res);
 
-    // 逐块提取 delta.content，以 SSE 事件透传
     for await (const chunk of stream) {
-      const text = chunk.choices?.[0]?.delta?.content ?? "";
-      if (text) res.write(`data: ${JSON.stringify({ content: text })}\n\n`);
+      const content = chunk.choices?.[0]?.delta?.content ?? "";
+
+      if (!content) continue;
+
+      sendSSE(res, {
+        content,
+      });
     }
+
     res.write("data: [DONE]\n\n");
     res.end();
-  } catch (err) {
-    // 已开始响应时无法再改状态码，直接断开
+  } catch (error) {
+    console.error("[NOMA AI ERROR]", error);
+
     if (res.headersSent) {
       res.end();
       return;
     }
-    const detail = err instanceof Error ? err.message : String(err);
-    res.writeHead(502, { "Content-Type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify({ error: "AI upstream error", detail: detail.slice(0, 400) }));
+
+    res.status(502).json({
+      error: "AI upstream error",
+      detail:
+        error instanceof Error ? error.message.slice(0, 400) : String(error),
+    });
   }
 }
 
-// ---- 静态文件服务（生产模式：node server 同时托管 dist）----
-async function serveStatic(req, res, pathname) {
-  if (!existsSync(DIST)) {
-    res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-    res.end("前端未构建。开发模式请运行 npm run dev；或先 npm run build 再访问。");
-    return;
-  }
-  let filePath = join(DIST, normalize(pathname).replace(/^([/\\])+/, ""));
-  if (pathname === "/" || !extname(filePath)) filePath = join(DIST, "index.html");
+/* =========================
+   Chat API
+========================= */
+
+app.post("/api/chat", async (req, res) => {
   try {
-    const s = await stat(filePath);
-    if (!s.isFile()) throw new Error("not file");
-    const data = await readFile(filePath);
-    res.writeHead(200, { "Content-Type": MIME[extname(filePath)] || "application/octet-stream" });
-    res.end(data);
-  } catch {
-    res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-    res.end("404 Not Found");
-  }
-}
+    const body = req.body || {};
 
-// ---- 路由 ----
-const server = createServer(async (req, res) => {
-  const url = new URL(req.url, `http://${req.headers.host}`);
-  const pathname = url.pathname;
+    let messages = [];
 
-  // CORS（开发模式跨端口访问）
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    /* -------------------------
+       多轮消息
+    ------------------------- */
 
-  if (req.method === "OPTIONS") {
-    res.writeHead(204);
-    res.end();
-    return;
-  }
+    if (Array.isArray(body.messages)) {
+      messages = body.messages
 
-  if (pathname === "/api/health") {
-    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify({ ok: true, service: "noma", time: new Date().toISOString() }));
-    return;
-  }
+        .filter(
+          (message) =>
+            message &&
+            typeof message.content === "string" &&
+            message.content.trim(),
+        )
 
-  if (pathname === "/api/chat" && req.method === "POST") {
-    try {
-      const body = JSON.parse((await readBody(req)) || "{}");
-      // 多轮上下文：优先取 { messages: [{role, content}, ...] }，兼容旧格式 { message }
-      let messages = [];
-      if (Array.isArray(body.messages)) {
-        messages = body.messages
-          .filter((m) => m && typeof m.content === "string" && m.content.trim())
-          .map((m) => ({
-            role: m.role === "assistant" ? "assistant" : "user",
-            content: String(m.content).trim().slice(0, 4000),
-          }))
-          .slice(-20); // 最多保留最近 20 轮
-      } else {
-        const message = String(body.message || "").trim().slice(0, 2000);
-        if (message) messages = [{ role: "user", content: message }];
+        .map((message) => ({
+          role: message.role === "assistant" ? "assistant" : "user",
+
+          content: String(message.content).trim().slice(0, 4000),
+        }))
+
+        .slice(-20);
+    } else {
+      /* -------------------------
+       兼容旧格式
+    ------------------------- */
+      const message = String(body.message || "")
+        .trim()
+        .slice(0, 2000);
+
+      if (message) {
+        messages = [
+          {
+            role: "user",
+            content: message,
+          },
+        ];
       }
-      if (!messages.length) {
-        res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ error: "message is required" }));
-        return;
-      }
-      if (AI_KEY) {
-        await proxyAIStream(res, messages);
-      } else {
-        const lastUser = [...messages].reverse().find((m) => m.role === "user");
-        await streamMock(res, lastUser?.content ?? "");
-      }
-    } catch (err) {
-      res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
-      res.end(JSON.stringify({ error: String(err.message || err) }));
     }
-    return;
-  }
 
-  // 其余 GET → 静态资源
-  if (req.method === "GET") {
-    await serveStatic(req, res, pathname);
-    return;
-  }
+    /* -------------------------
+       参数校验
+    ------------------------- */
 
-  res.writeHead(405, { "Content-Type": "text/plain; charset=utf-8" });
-  res.end("Method Not Allowed");
+    if (!messages.length) {
+      return res.status(400).json({
+        error: "message is required",
+      });
+    }
+
+    /* -------------------------
+       AI / Mock
+    ------------------------- */
+
+    if (AI_KEY) {
+      await streamAI(res, messages);
+    } else {
+      const lastUser = [...messages]
+        .reverse()
+        .find((message) => message.role === "user");
+
+      await streamMock(res, lastUser?.content || "");
+    }
+  } catch (error) {
+    console.error("[NOMA SERVER ERROR]", error);
+
+    if (!res.headersSent) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : String(error),
+      });
+    } else {
+      res.end();
+    }
+  }
 });
 
-server.listen(PORT, () => {
-  console.log(`[NOMA] 诺玛后端已启动 → http://localhost:${PORT}`);
-  console.log(`[NOMA] ${AI_KEY ? `已接入真实 AI API（${AI_BASE} · ${AI_MODEL}）` : "未配置 API Key，使用本地模拟回答"}`);
+/* =========================
+   静态文件
+========================= */
+
+if (fs.existsSync(DIST)) {
+  app.use(express.static(DIST));
+
+  /* React SPA fallback（非 /api 的 GET 一律返回 index.html） */
+  app.use((req, res, next) => {
+    if (req.method === "GET" && !req.path.startsWith("/api/")) {
+      res.sendFile(path.join(DIST, "index.html"));
+      return;
+    }
+    next();
+  });
+}
+
+/* =========================
+   404
+========================= */
+
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Not Found",
+  });
+});
+
+/* =========================
+   全局错误
+========================= */
+
+app.use((error, req, res, next) => {
+  console.error("[NOMA ERROR]", error);
+
+  if (res.headersSent) {
+    return next(error);
+  }
+
+  res.status(500).json({
+    error: "Internal Server Error",
+  });
+});
+
+/* =========================
+   启动
+========================= */
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`[NOMA] 诺玛系统启动 → http://0.0.0.0:${PORT}`);
+
+  console.log(`[NOMA] AI: ${AI_KEY ? "已配置" : "未配置，使用 Mock"}`);
+
+  console.log(`[NOMA] Model: ${AI_MODEL}`);
+
+  console.log(`[NOMA] BaseURL: ${AI_BASE}`);
 });
